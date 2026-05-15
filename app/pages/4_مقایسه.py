@@ -10,7 +10,18 @@ import plotly.express as px
 import plotly.graph_objects as go
 from utils.theme import render_header, render_footer
 
-DB_PATH = str(Path.home() / "Desktop/khamenei_corpus/database.db")
+# مسیر دیتابیس — محلی یا سرور
+def _resolve_db():
+    from pathlib import Path as _P
+    local = _P(__file__).resolve().parent.parent.parent / "database.db"
+    if local.exists():
+        return str(local)
+    tmp = _P("/tmp/khamenei_db.db")
+    if tmp.exists():
+        return str(tmp)
+    from utils.db import _get_db_path
+    return str(_get_db_path())
+DB_PATH = _resolve_db()
 
 render_header("مقایسه کلیدواژه‌ها")
 
