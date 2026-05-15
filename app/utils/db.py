@@ -31,16 +31,25 @@ def _get_db_path() -> Path:
         return _DB_CACHE
 
     # production: بررسی cache در /tmp
-    tmp = Path("/tmp/khamenei_db.db")
+    tmp = Path("/tmp/khamenei_db_v2.db")
     if tmp.exists():
-        _DB_CACHE = tmp
-        return _DB_CACHE
+        # بررسی سلامت فایل cache
+        try:
+            test_conn = sqlite3.connect(str(tmp))
+            count = test_conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
+            test_conn.close()
+            if count >= 10000:
+                _DB_CACHE = tmp
+                return _DB_CACHE
+        except Exception:
+            pass
+        tmp.unlink(missing_ok=True)
 
     # دانلود — از secret یا URL پیش‌فرض
     url = os.environ.get("DB_URL", "") or _DEFAULT_DB_URL
 
     import requests
-    tmp_partial = Path("/tmp/khamenei_db.db.part")
+    tmp_partial = Path("/tmp/khamenei_db_v2.db.part")
     try:
         with requests.get(url, stream=True, allow_redirects=True, timeout=600) as r:
             r.raise_for_status()
