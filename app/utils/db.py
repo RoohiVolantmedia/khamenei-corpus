@@ -40,11 +40,36 @@ def _get_db_path() -> Path:
     url = os.environ.get("DB_URL", "") or _DEFAULT_DB_URL
 
     import requests
-    with requests.get(url, stream=True, allow_redirects=True) as r:
-        r.raise_for_status()
-        with open(str(tmp), "wb") as f:
-            for chunk in r.iter_content(chunk_size=1024 * 1024):
-                f.write(chunk)
+    tmp_partial = Path("/tmp/khamenei_db.db.part")
+    try:
+        with requests.get(url, stream=True, allow_redirects=True, timeout=600) as r:
+            r.raise_for_status()
+            expected = int(r.headers.get("Content-Length", 0))
+            downloaded = 0
+            with open(str(tmp_partial), "wb") as f:
+                for chunk in r.iter_content(chunk_size=1024 * 1024):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded += len(chunk)
+        # بررسی کامل بودن فایل
+        if expected > 0 and downloaded < expected * 0.99:
+            raise RuntimeError(
+                f"دانلود ناقص: {downloaded:,} از {expected:,} بایت دریافت شد"
+            )
+        # بررسی سلامت دیتابیس
+        test_conn = sqlite3.connect(str(tmp_partial))
+        count = test_conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
+        test_conn.close()
+        if count < 10000:
+            raise RuntimeError(
+                f"دیتابیس ناقص است: فقط {count} سند یافت شد"
+            )
+        # انتقال اتمیک
+        tmp_partial.rename(tmp)
+    except Exception:
+        if tmp_partial.exists():
+            tmp_partial.unlink()
+        raise
 
     _DB_CACHE = tmp
     return _DB_CACHE
