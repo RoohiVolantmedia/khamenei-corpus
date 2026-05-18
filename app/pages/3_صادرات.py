@@ -17,9 +17,6 @@ def _resolve_db():
     local = _P(__file__).resolve().parent.parent.parent / "database.db"
     if local.exists():
         return str(local)
-    tmp = _P("/tmp/khamenei_db.db")
-    if tmp.exists():
-        return str(tmp)
     from utils.db import _get_db_path
     return str(_get_db_path())
 DB_PATH = _resolve_db()
